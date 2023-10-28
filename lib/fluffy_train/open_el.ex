@@ -139,7 +139,6 @@ defmodule FluffyTrain.OpenEL do
   end
 
   def handle_info({:user_message, message}, state) do
-    # A node has connected
     Logger.info("User message: #{inspect(message)}")
 
     IO.inspect(state)
