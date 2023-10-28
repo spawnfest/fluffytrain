@@ -47,7 +47,8 @@ defmodule FluffyTrain.MixProject do
       {:gettext, "~> 0.20"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-      {:openai_ex, "~> 0.2.3"}
+      {:openai_ex, "~> 0.2.3"},
+      {:petal_components, "~> 1.0"}
     ]
   end
 

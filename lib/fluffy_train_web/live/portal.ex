@@ -23,8 +23,10 @@ defmodule FluffyTrainWeb.Portal do
       Submit
     </.button>
     </form>
-
     <%= @output %>
+    <.alert color="info">
+    This is an info alert
+    </.alert>
     </div>
     """
   end
