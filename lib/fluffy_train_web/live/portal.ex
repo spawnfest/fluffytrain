@@ -11,6 +11,7 @@ defmodule FluffyTrainWeb.Portal do
     socket = assign(socket, form: to_form(%{}, as: "object"))
 
     Phoenix.PubSub.subscribe(FluffyTrain.PubSub, FluffyTrain.OpenEL.topic_response_stream())
+    Phoenix.PubSub.subscribe(FluffyTrain.PubSub, FluffyTrain.OpenEL.topic_user_message())
 
     openai = [
       [%{prompt: PromptRepo.prompt(), model_type: PromptRepo.model()}]
@@ -19,7 +20,6 @@ defmodule FluffyTrainWeb.Portal do
     {:ok,
      assign(socket,
        openai: openai,
-       output: "",
        text: nil,
        content: "",
        raw_messages: FluffyTrain.OpenEL.get_raw_messages()
@@ -140,6 +140,15 @@ defmodule FluffyTrainWeb.Portal do
     {:noreply, socket}
   end
 
+  def handle_info({:user_message, message}, socket) do
+    Logger.info("User message: #{inspect(message)}")
+
+    {:noreply,
+     assign(socket,
+       raw_messages: socket.assigns.raw_messages ++ [%{role: "user", content: message}]
+     )}
+  end
+
   def handle_event("submit_text", %{"text" => text}, socket) do
     Phoenix.PubSub.local_broadcast(
       FluffyTrain.PubSub,
@@ -147,11 +156,12 @@ defmodule FluffyTrainWeb.Portal do
       {:user_message, text}
     )
 
-    {:noreply,
-     assign(socket,
-       text: text,
-       raw_messages: socket.assigns.raw_messages ++ [%{role: "user", content: text}]
-     )}
+    {:noreply, socket}
+    # {:noreply,
+    # assign(socket,
+    #  text: text,
+    #  raw_messages: socket.assigns.raw_messages ++ [%{role: "user", content: text}]
+    # )}
   end
 
   def handle_event("new_chat", _params, socket) do
@@ -185,12 +195,6 @@ defmodule FluffyTrainWeb.Portal do
         </.button>
       </form>
     </div>
-
-
-    <%= @output %>
-    <.alert color="info">
-    This is an info alert
-    </.alert>
     </div>
     """
   end

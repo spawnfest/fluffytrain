@@ -1,9 +1,10 @@
 defmodule FluffyTrain.OpenEL do
   use GenServer
   require Logger
+  alias FluffyTrain.RuntimeEvaluator
   alias FluffyTrain.PromptRepo
+  alias FluffyTrain.TextExtractor
   alias OpenaiEx.ChatCompletion
-  alias OpenaiEx.ChatMessage
 
   @topic_user_message "open_el:user_message"
   @topic_response_stream "open_el:response_stream"
@@ -34,6 +35,7 @@ defmodule FluffyTrain.OpenEL do
       apikey: apikey,
       openai: openai,
       model_type: model_type,
+      task_pid: nil,
       system: system,
       messages: [%{role: "system", content: system}],
       processed_messages: %{}
@@ -94,47 +96,65 @@ defmodule FluffyTrain.OpenEL do
     completion_request = create_completion_request(state)
     pid = self()
 
-    Task.start(fn ->
-      openai = Map.get(state, :openai)
-      completion_stream = openai |> ChatCompletion.create(completion_request, stream: true)
+    {:ok, responce_task} =
+      Task.start(fn ->
+        openai = Map.get(state, :openai)
+        completion_stream = openai |> ChatCompletion.create(completion_request, stream: true)
 
-      Phoenix.PubSub.local_broadcast(
-        FluffyTrain.PubSub,
-        topic_response_stream(),
-        {:new_response, ""}
-      )
-
-      token_stream =
-        completion_stream
-        |> Stream.flat_map(& &1)
-        |> Stream.map(fn %{data: d} ->
-          d |> Map.get("choices") |> Enum.at(0) |> Map.get("delta")
-        end)
-        |> Stream.filter(fn map -> map |> Map.has_key?("content") end)
-        |> Stream.map(fn map -> map |> Map.get("content") end)
-        # Print each content to the console
-        |> Stream.each(
-          &Phoenix.PubSub.local_broadcast(
-            FluffyTrain.PubSub,
-            topic_response_stream(),
-            {:new_content, &1}
-          )
+        Phoenix.PubSub.local_broadcast(
+          FluffyTrain.PubSub,
+          topic_response_stream(),
+          {:new_response, ""}
         )
 
-      response =
-        token_stream
-        |> Enum.to_list()
-        |> Enum.join("")
+        token_stream =
+          completion_stream
+          |> Stream.flat_map(& &1)
+          |> Stream.map(fn %{data: d} ->
+            d |> Map.get("choices") |> Enum.at(0) |> Map.get("delta")
+          end)
+          |> Stream.filter(fn map -> map |> Map.has_key?("content") end)
+          |> Stream.map(fn map -> map |> Map.get("content") end)
+          # Print each content to the console
+          |> Stream.each(
+            &Phoenix.PubSub.local_broadcast(
+              FluffyTrain.PubSub,
+              topic_response_stream(),
+              {:new_content, &1}
+            )
+          )
 
-      send(pid, {:process_response, response})
+        response =
+          token_stream
+          |> Enum.to_list()
+          |> Enum.join("")
 
-      # append_message(:assistant, )
-      # send(pid, {:validate_code})
-    end)
+        send(pid, {:process_response, response})
+
+        # append_message(:assistant, )
+        # send(pid, {:validate_code})
+      end)
+
+    # Map.put(state, :task_pid, responce_task.pid)
+    state
+  end
+
+  defp is_code_validation_required(response) do
+    result = TextExtractor.extract(response)
+
+    code = result["#CODE"]
+    example = result["#EXAMPLE"]
+    output = result["#OUTPUT"]
+
+    if code != "" do
+      Logger.info("Response has code blocks that require evaluation")
+      send(self(), {:evaluate_code, code, example, output})
+    end
   end
 
   def handle_info({:process_response, response}, state) do
     state = append_message(:assistant, response, state)
+    is_code_validation_required(response)
     {:noreply, state}
   end
 
@@ -144,7 +164,20 @@ defmodule FluffyTrain.OpenEL do
     IO.inspect(state)
     state = append_message(:user, message, state)
 
-    get_response(state)
+    state = get_response(state)
+
+    {:noreply, state}
+  end
+
+  def handle_info({:evaluate_code, code, example, output}, state) do
+    runtime_evaluation_results =
+      RuntimeEvaluator.evaluate_and_construct_message(code, example, output)
+
+    Phoenix.PubSub.local_broadcast(
+      FluffyTrain.PubSub,
+      FluffyTrain.OpenEL.topic_user_message(),
+      {:user_message, runtime_evaluation_results}
+    )
 
     {:noreply, state}
   end

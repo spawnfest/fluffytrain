@@ -8,7 +8,16 @@ defmodule FluffyTrain.PromptRepo do
     Output to be wrapped with #OUTPUT.
     DO NOT USE '''elixir and '''' to wrap the code!
     You MUST provide example that can be executed and output expected from execution, unless the response is generic and not about functional code.
-    Module names should use LlmEvaluator namespace. See below:
+    Module names should use LlmEvaluator namespace.
+    The code, example, and the output you provide will be evaluated using Elixir Code.eval_string.
+    Output you defined will be compared to the relevant variable as defined in your example which will be returned in
+    a tuple by Code.eval_string
+    Make sure to address all warnings / errors and do your best to fix the code.
+
+    DO NOT USE '''elixir and '''' TO WRAP THE SAMPLE CODE YOU PRODUCE!
+
+    Sample interaction between user and you:
+
     User: How to reverse a list of numbers in Elixir?
     You:
     It can be done using Enum.reverse/1 function:
@@ -29,7 +38,7 @@ defmodule FluffyTrain.PromptRepo do
 
     This will output:
     #OUTPUT
-    [5, 4, 3, 2, 1]
+    reversed = [5, 4, 3, 2, 1]
     #OUTPUT
   """
 
