@@ -46,8 +46,19 @@ defmodule FluffyTrain.OpenEL do
     GenServer.cast(__MODULE__, :reset_state)
   end
 
+  def get_raw_messages() do
+    GenServer.call(__MODULE__, :get_raw_messages)
+  end
+
   def handle_cast(:reset_state, _state) do
     {:noreply, reset()}
+  end
+
+  def handle_call(:get_raw_messages, _from, state) do
+    messages = Map.get(state, :messages)
+    # remove the system prompt message
+    messages = List.delete_at(messages, 0)
+    {:reply, messages, state}
   end
 
   defp append_message(:user, message, state) do
@@ -87,6 +98,12 @@ defmodule FluffyTrain.OpenEL do
       openai = Map.get(state, :openai)
       completion_stream = openai |> ChatCompletion.create(completion_request, stream: true)
 
+      Phoenix.PubSub.local_broadcast(
+        FluffyTrain.PubSub,
+        topic_response_stream(),
+        {:new_response, ""}
+      )
+
       token_stream =
         completion_stream
         |> Stream.flat_map(& &1)
@@ -110,12 +127,6 @@ defmodule FluffyTrain.OpenEL do
         |> Enum.join("")
 
       send(pid, {:process_response, response})
-
-      Phoenix.PubSub.local_broadcast(
-        FluffyTrain.PubSub,
-        topic_response_stream(),
-        {:new_content, "\n"}
-      )
 
       # append_message(:assistant, )
       # send(pid, {:validate_code})

@@ -20,16 +20,29 @@ defmodule FluffyTrainWeb.Portal do
      assign(socket,
        openai: openai,
        output: "",
-       text: "",
-       content: ""
+       text: nil,
+       content: "",
+       raw_messages: FluffyTrain.OpenEL.get_raw_messages()
+     )}
+  end
+
+  def handle_info({:new_response, _}, socket) do
+    {:noreply,
+     assign(socket,
+       raw_messages: socket.assigns.raw_messages ++ [%{role: "assistant", content: ""}]
      )}
   end
 
   def handle_info({:new_content, new_content}, socket) do
-    {:noreply,
-     assign(socket,
-       content: socket.assigns.content <> new_content
-     )}
+    raw_messages = socket.assigns.raw_messages
+    last_index = length(raw_messages) - 1
+
+    updated_raw_messages =
+      List.update_at(raw_messages, last_index, fn last_message ->
+        Map.update!(last_message, :content, &(&1 <> new_content))
+      end)
+
+    {:noreply, assign(socket, raw_messages: updated_raw_messages)}
   end
 
   def handle_info({:validate_code}, socket) do
@@ -134,7 +147,11 @@ defmodule FluffyTrainWeb.Portal do
       {:user_message, text}
     )
 
-    {:noreply, assign(socket, text: text)}
+    {:noreply,
+     assign(socket,
+       text: text,
+       raw_messages: socket.assigns.raw_messages ++ [%{role: "user", content: text}]
+     )}
   end
 
   def handle_event("new_chat", _params, socket) do
@@ -142,7 +159,8 @@ defmodule FluffyTrainWeb.Portal do
 
     {:noreply,
      assign(socket,
-       content: ""
+       content: "",
+       raw_messages: FluffyTrain.OpenEL.get_raw_messages()
      )}
   end
 
@@ -150,18 +168,18 @@ defmodule FluffyTrainWeb.Portal do
     ~H"""
     <div class="container mt-4 w-full pb-32"> <!-- Added padding-bottom to make space for the floating form -->
     <.button color="info" label="New Chat" variant="shadow" phx-click="new_chat" class="fixed top-12 left-0 m-4 z-50"/>
-    <.card>
-    <.card_content category="Agent" class="max-w-full" heading="Response">
-    <div class="whitespace-pre-line">
-    <%= @content %>
-    </div>
-     </.card_content>
-    </.card>
+    <%= for %{role: role, content: content} <- @raw_messages do %>
+      <.card class="mt-4 ">
+        <.card_content category={role} class={"max-w-full #{if role == "user", do: "bg-gray-600 bg-opacity-60", else: "bg-blue-600 bg-opacity-20"}"}>
+          <div class="whitespace-pre-line">
+            <%= content %>
+          </div>
+        </.card_content>
+      </.card>
+    <% end %>
     <div class="fixed bottom-0 z-50 w-2/3 bg-white dark:bg-gray-800 shadow" style="left: 50%; transform: translateX(-50%); background: rgba(255, 255, 255, 0.6);">
       <form phx-submit="submit_text" class="p-4">
-        <textarea name="text" id="message" rows="4" class="mt-4 block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Write your thoughts here...">
-          <%= assigns.text %>
-        </textarea> <br />
+        <textarea name="text" id="message" rows="4" class="mt-4 block p-2.5 w-full text-sm text-gray-900 bg-gray-50 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Write your thoughts here..."><%= assigns.text %></textarea> <br />
         <.button type="submit" color="success">
           Submit
         </.button>
