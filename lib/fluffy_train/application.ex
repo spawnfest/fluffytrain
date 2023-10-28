@@ -15,7 +15,10 @@ defmodule FluffyTrain.Application do
       # Start Finch
       {Finch, name: FluffyTrain.Finch},
       # Start the Endpoint (http/https)
-      FluffyTrainWeb.Endpoint
+      FluffyTrainWeb.Endpoint,
+      ExUnit.Server,
+      ExUnit.CaptureServer,
+      ExUnit.OnExitHandler
       # Start a worker by calling: FluffyTrain.Worker.start_link(arg)
       # {FluffyTrain.Worker, arg}
     ]
