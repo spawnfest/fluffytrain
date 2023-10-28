@@ -16,6 +16,7 @@ defmodule FluffyTrain.Application do
       {Finch, name: FluffyTrain.Finch},
       # Start the Endpoint (http/https)
       FluffyTrainWeb.Endpoint,
+      FluffyTrain.OpenEL,
       ExUnit.Server,
       ExUnit.CaptureServer,
       ExUnit.OnExitHandler

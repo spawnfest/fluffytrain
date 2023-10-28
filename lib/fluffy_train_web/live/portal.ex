@@ -10,6 +10,8 @@ defmodule FluffyTrainWeb.Portal do
   def mount(_params, _session, socket) do
     socket = assign(socket, form: to_form(%{}, as: "object"))
 
+    Phoenix.PubSub.subscribe(FluffyTrain.PubSub, FluffyTrain.OpenEL.topic_response_stream())
+
     openai = [
       [%{prompt: PromptRepo.prompt(), model_type: PromptRepo.model()}]
     ]
@@ -126,44 +128,18 @@ defmodule FluffyTrainWeb.Portal do
   end
 
   def handle_event("submit_text", %{"text" => text}, socket) do
-    [[%{prompt: extracted_prompt, model_type: extracted_model_type}]] = socket.assigns.openai
-
-    pid = self()
-
-    apikey = System.fetch_env!("OPENAI_API_KEY")
-    openai = OpenaiEx.new(apikey)
-
-    completion_req =
-      ChatCompletion.new(
-        model: extracted_model_type,
-        messages: [ChatMessage.system(extracted_prompt), ChatMessage.user(text)]
-      )
-
-    Task.start(fn ->
-      completion_stream = openai |> ChatCompletion.create(completion_req, stream: true)
-
-      send(pid, {:new_content, "You:\n"})
-
-      token_stream =
-        completion_stream
-        |> Stream.flat_map(& &1)
-        |> Stream.map(fn %{data: d} ->
-          d |> Map.get("choices") |> Enum.at(0) |> Map.get("delta")
-        end)
-        |> Stream.filter(fn map -> map |> Map.has_key?("content") end)
-        |> Stream.map(fn map -> map |> Map.get("content") end)
-        # Print each content to the console
-        |> Stream.each(&send(pid, {:new_content, &1}))
-
-      Enum.to_list(token_stream)
-      send(pid, {:new_content, "\n"})
-      send(pid, {:validate_code})
-    end)
+    Phoenix.PubSub.local_broadcast(
+      FluffyTrain.PubSub,
+      FluffyTrain.OpenEL.topic_user_message(),
+      {:user_message, text}
+    )
 
     {:noreply, assign(socket, text: text)}
   end
 
   def handle_event("new_chat", _params, socket) do
+    FluffyTrain.OpenEL.reset_state()
+
     {:noreply,
      assign(socket,
        content: ""

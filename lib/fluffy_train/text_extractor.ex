@@ -13,7 +13,10 @@ defmodule FluffyTrain.TextExtractor do
       prev_content = Enum.at(parts, 1)
 
       if prev_content do
-        String.trim(prev_content)
+        prev_content
+        |> String.replace("elixir", "")
+        |> String.replace("```", "")
+        |> String.trim()
       else
         ""
       end
