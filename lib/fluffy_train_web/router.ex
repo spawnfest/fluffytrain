@@ -18,8 +18,9 @@ defmodule FluffyTrainWeb.Router do
     pipe_through(:browser)
 
     # get "/", PageController, :home
-    live("/", OpenEAIPortal)
-    live("/ei", Portal)
+    live("/eai", OpenEAIPortal)
+    live("/ei", OpenEIPortal)
+    live("/", Portal)
   end
 
   # Other scopes may use custom stacks.
