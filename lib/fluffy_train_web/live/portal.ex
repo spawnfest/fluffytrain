@@ -1,11 +1,6 @@
 defmodule FluffyTrainWeb.Portal do
   use FluffyTrainWeb, :live_view
   require Logger
-  alias FluffyTrain.TextExtractor
-  alias FluffyTrain.RuntimeEvaluator
-  alias FluffyTrain.PromptRepo
-  alias OpenaiEx.ChatCompletion
-  alias OpenaiEx.ChatMessage
 
   def mount(_params, _session, socket) do
     socket = assign(socket, form: to_form(%{}, as: "object"))
@@ -13,13 +8,8 @@ defmodule FluffyTrainWeb.Portal do
     Phoenix.PubSub.subscribe(FluffyTrain.PubSub, FluffyTrain.OpenEL.topic_response_stream())
     Phoenix.PubSub.subscribe(FluffyTrain.PubSub, FluffyTrain.OpenEL.topic_user_message())
 
-    openai = [
-      [%{prompt: PromptRepo.prompt(), model_type: PromptRepo.model()}]
-    ]
-
     {:ok,
      assign(socket,
-       openai: openai,
        text: nil,
        content: "",
        raw_messages: FluffyTrain.OpenEL.get_raw_messages()
