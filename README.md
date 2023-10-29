@@ -38,6 +38,11 @@
   - Click the "Generate Exception" button, which will invoke code that has a division by 0.
   - Enjoy the show!!! :)
 
+<p align="center">
+  <a href="https://youtu.be/PsaS_MtwgT0">
+    <img src="https://img.youtube.com/vi/PsaS_MtwgT0/0.jpg" alt="Introduction to GitHub">
+  </a>
+</p>
 
 ## Getting Started
 
