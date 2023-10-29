@@ -54,7 +54,7 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 # Disclaimer
 
-GPT-4, and any other LLMs, make mistakes. Don't expect the software provide to work on very complex requests.
+GPT-4, and any other Large Language Models (LLMs), make mistakes. Don't expect the software provided to work on very complex requests.
 
 # The Story
 
