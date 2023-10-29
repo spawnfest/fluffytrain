@@ -51,7 +51,7 @@ To start application:
   * You **MUST** define OpenAI API key in the same terminal where you plan to run the application
     * export OPENAI_API_KEY="XXXXXXXXXXXXXXXXXXX"
   * You **MUST** have GPT-4 enabled for your OpenAI API key
-  * **Judges** - If you don't have an OpenAI API key, **reachout** and I will provide one to help you evaluate the software
+  * **Judges** - If you don't have an OpenAI API key, **reach out** and I will provide one to help you evaluate the software
   * Run `mix deps.get` to install and setup dependencies
   * Start Phoenix endpoint inside IEx with `iex -S mix phx.server`
 
