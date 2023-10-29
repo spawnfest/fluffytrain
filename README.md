@@ -58,6 +58,10 @@ GPT-4, and any other Large Language Models (LLMs), make mistakes. Don't expect t
 
 # The Story
 
+<p align="center">
+  <img src="priv/static/images/launch_site.png" alt="Self Healing">
+</p>
+
 In the year 2056, humanity stands on the cusp of a new era. The dream of traversing the cosmos has become a tantalizing reality with the creation of wormholes—gateways that span the vast and silent stretches of the universe. But as these cosmic tunnels unfurl, we find ourselves bound by the limits of our own biology, unable to pass through the twisting corridors of space-time our technology has forged.
 
 Amidst this paradox of progress, the world's preeminent nations have united under a shared vision, pooling their intellect and resources. The result is a marvel of autonomy and engineering: a robotic spacecraft, designed to endure the solitude of the stars and the ravages of interstellar travel. It is a vessel of discovery, built to roam the infinite black sea above, seeking out new knowledge and understanding before returning to Earth's embrace.
