@@ -45,101 +45,6 @@ defmodule FluffyTrainWeb.Portal do
     {:noreply, assign(socket, raw_messages: updated_raw_messages)}
   end
 
-  def handle_info({:validate_code}, socket) do
-    result = TextExtractor.extract(socket.assigns.content)
-
-    code = result["#CODE"]
-    example = result["#EXAMPLE"]
-    output = result["#OUTPUT"]
-
-    %{error: code_errors, warnings: code_warnings, evaluation: code_evaluation} =
-      RuntimeEvaluator.evaluate(code)
-
-    send(
-      self(),
-      {:new_content,
-       "User:\n After running the code and examples you provided I got the following:\n"}
-    )
-
-    send(self(), {:new_content, "Code compilation errors: \n" <> code_errors <> "\n"})
-    send(self(), {:new_content, "Code compilation warnings: \n" <> code_warnings <> "\n"})
-
-    %{error: example_errors, warnings: example_warnings, evaluation: example_evaluation} =
-      RuntimeEvaluator.evaluate(example)
-
-    send(self(), {:new_content, "Example code compilation errors: \n" <> example_errors <> "\n"})
-
-    send(
-      self(),
-      {:new_content, "Example code compilation warnings: \n" <> example_warnings <> "\n"}
-    )
-
-    send(
-      self(),
-      {:new_content,
-       "Execution output of example code is, as provided by Code.eval_string: \n" <>
-         "#{inspect(example_evaluation)}" <>
-         "\n" <>
-         "vs the expected result: " <> output <> "\n"}
-    )
-
-    # Need to remove the module, otherwise a warning is generated because next run will overwrite the current module
-    case code_evaluation do
-      {{:module, module_name, _binary, _tuple}, _list} ->
-        RuntimeEvaluator.remove_module(module_name)
-
-      _ ->
-        Logger.info("No module defined in the code.")
-    end
-
-    if code_errors != "" or code_warnings != "" or example_errors != "" or
-         example_warnings != "" do
-      Logger.warning("Errors or warnings are not empty.")
-      [[%{prompt: extracted_prompt, model_type: extracted_model_type}]] = socket.assigns.openai
-
-      send(
-        self(),
-        {:chat_completion, extracted_prompt, extracted_model_type, socket.assigns.content}
-      )
-    end
-
-    {:noreply, socket}
-  end
-
-  def handle_info({:chat_completion, prompt, model_type, text}, socket) do
-    pid = self()
-
-    apikey = System.fetch_env!("OPENAI_API_KEY")
-    openai = OpenaiEx.new(apikey)
-
-    completion_req =
-      ChatCompletion.new(
-        model: model_type,
-        messages: [ChatMessage.system(prompt), ChatMessage.user(text)]
-      )
-
-    Task.start(fn ->
-      completion_stream = openai |> ChatCompletion.create(completion_req, stream: true)
-
-      token_stream =
-        completion_stream
-        |> Stream.flat_map(& &1)
-        |> Stream.map(fn %{data: d} ->
-          d |> Map.get("choices") |> Enum.at(0) |> Map.get("delta")
-        end)
-        |> Stream.filter(fn map -> map |> Map.has_key?("content") end)
-        |> Stream.map(fn map -> map |> Map.get("content") end)
-        # Print each content to the console
-        |> Stream.each(&send(pid, {:new_content, &1}))
-
-      Enum.to_list(token_stream)
-      send(pid, {:new_content, "\n"})
-      send(pid, {:validate_code})
-    end)
-
-    {:noreply, socket}
-  end
-
   def handle_info({:user_message, message}, socket) do
     Logger.info("User message: #{inspect(message)}")
 
@@ -157,11 +62,6 @@ defmodule FluffyTrainWeb.Portal do
     )
 
     {:noreply, socket}
-    # {:noreply,
-    # assign(socket,
-    #  text: text,
-    #  raw_messages: socket.assigns.raw_messages ++ [%{role: "user", content: text}]
-    # )}
   end
 
   def handle_event("new_chat", _params, socket) do
@@ -174,10 +74,18 @@ defmodule FluffyTrainWeb.Portal do
      )}
   end
 
+  def handle_event("cancel_generation", _params, socket) do
+    FluffyTrain.OpenEL.cancel_generation()
+
+    {:noreply, socket}
+  end
+
   def render(assigns) do
     ~H"""
     <div class="container mt-4 w-full pb-32"> <!-- Added padding-bottom to make space for the floating form -->
-    <.button color="info" label="New Chat" variant="shadow" phx-click="new_chat" class="fixed top-12 left-0 m-4 z-50"/>
+    <img src="/images/Logo_Concept_2.png" class="fixed top-10 left-10 h-40 w-40 object-cover">
+    <.button color="info" label="New Chat" variant="shadow" phx-click="new_chat" class="fixed top-60 left-14 m-4 z-50"/>
+    <.button color="danger" label="Cancel Generation" variant="shadow" phx-click="cancel_generation" class="fixed top-80 left-8 m-4 z-5"/>
     <%= for %{role: role, content: content} <- @raw_messages do %>
       <.card class="mt-4 ">
         <.card_content category={role} class={"max-w-full #{if role == "user", do: "bg-gray-600 bg-opacity-60", else: "bg-blue-600 bg-opacity-20"}"}>

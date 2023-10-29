@@ -52,7 +52,24 @@ defmodule FluffyTrain.OpenEL do
     GenServer.call(__MODULE__, :get_raw_messages)
   end
 
+  def cancel_generation do
+    GenServer.cast(__MODULE__, :cancel_generation)
+  end
+
   def handle_cast(:reset_state, _state) do
+    {:noreply, reset()}
+  end
+
+  def handle_cast(:cancel_generation, state) do
+    IO.inspect(state)
+    pid = Map.get(state, :task_pid)
+
+    if pid && Process.alive?(pid) do
+      Process.exit(pid, :kill)
+    else
+      Logger.warning("Task is already dead.")
+    end
+
     {:noreply, reset()}
   end
 
@@ -96,7 +113,7 @@ defmodule FluffyTrain.OpenEL do
     completion_request = create_completion_request(state)
     pid = self()
 
-    {:ok, responce_task} =
+    {:ok, responce_task_pid} =
       Task.start(fn ->
         openai = Map.get(state, :openai)
         completion_stream = openai |> ChatCompletion.create(completion_request, stream: true)
@@ -130,12 +147,9 @@ defmodule FluffyTrain.OpenEL do
           |> Enum.join("")
 
         send(pid, {:process_response, response})
-
-        # append_message(:assistant, )
-        # send(pid, {:validate_code})
       end)
 
-    # Map.put(state, :task_pid, responce_task.pid)
+    state = Map.put(state, :task_pid, responce_task_pid)
     state
   end
 
@@ -161,10 +175,11 @@ defmodule FluffyTrain.OpenEL do
   def handle_info({:user_message, message}, state) do
     Logger.info("User message: #{inspect(message)}")
 
-    IO.inspect(state)
     state = append_message(:user, message, state)
 
     state = get_response(state)
+
+    IO.inspect(state)
 
     {:noreply, state}
   end

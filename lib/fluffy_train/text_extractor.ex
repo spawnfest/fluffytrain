@@ -14,7 +14,7 @@ defmodule FluffyTrain.TextExtractor do
 
       if prev_content do
         prev_content
-        |> String.replace("elixir", "")
+        |> String.replace("'''elixir", "")
         |> String.replace("```", "")
         |> String.trim()
       else
