@@ -52,6 +52,11 @@ defmodule FluffyTrain.RuntimeEvaluator do
     end
   end
 
+  def apply_hotreload_fix(fixed_code) do
+    # Need some error checking here, but no time left in the hackaton :)
+    Code.compile_string(fixed_code)
+  end
+
   def evaluate_and_construct_message(code, example, output) do
     intro_message = """
     I have evaluated your code by executing it in runtime environment via Code.eval_string. \n

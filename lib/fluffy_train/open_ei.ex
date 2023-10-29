@@ -1,4 +1,4 @@
-defmodule FluffyTrain.OpenEL do
+defmodule FluffyTrain.OpenEI do
   use GenServer
   require Logger
   alias FluffyTrain.RuntimeEvaluator
@@ -8,9 +8,11 @@ defmodule FluffyTrain.OpenEL do
 
   @topic_user_message "open_el:user_message"
   @topic_response_stream "open_el:response_stream"
+  @topic_successfull_solution "open_el:successfull_solution"
 
   def topic_user_message, do: @topic_user_message
   def topic_response_stream, do: @topic_response_stream
+  def topic_successfull_solution, do: @topic_successfull_solution
 
   def start_link(_) do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
@@ -29,7 +31,7 @@ defmodule FluffyTrain.OpenEL do
     apikey = System.fetch_env!("OPENAI_API_KEY")
     openai = OpenaiEx.new(apikey)
     model_type = PromptRepo.model()
-    system = PromptRepo.prompt()
+    system = PromptRepo.prompt_assistant()
 
     state = %{
       apikey: apikey,
@@ -166,21 +168,43 @@ defmodule FluffyTrain.OpenEL do
     end
   end
 
+  defp is_it_final_solution(response) do
+    result = TextExtractor.extract_solution(response)
+
+    solution_success = result["#SOLUTION_SUCCESS"]
+    working_code = result["#WORKING_CODE"]
+    decription = result["#DESCRIPTION"]
+
+    if working_code != "" do
+      Logger.info("Response has code blocks that show the final working solution")
+
+      Phoenix.PubSub.local_broadcast(
+        FluffyTrain.PubSub,
+        topic_successfull_solution(),
+        {:successfull_solution, response}
+      )
+    else
+      Logger.info("This response doesn't include the final working solution.")
+    end
+  end
+
   def handle_info({:process_response, response}, state) do
     state = append_message(:assistant, response, state)
     is_code_validation_required(response)
+    is_it_final_solution(response)
     {:noreply, state}
   end
 
   def handle_info({:user_message, message}, state) do
     Logger.info("User message: #{inspect(message)}")
-
     state = append_message(:user, message, state)
-
     state = get_response(state)
 
-    IO.inspect(state)
+    {:noreply, state}
+  end
 
+  def handle_info({:successfull_solution, _message}, state) do
+    # should be handle someplace else
     {:noreply, state}
   end
 
@@ -190,7 +214,7 @@ defmodule FluffyTrain.OpenEL do
 
     Phoenix.PubSub.local_broadcast(
       FluffyTrain.PubSub,
-      FluffyTrain.OpenEL.topic_user_message(),
+      topic_user_message(),
       {:user_message, runtime_evaluation_results}
     )
 

@@ -45,10 +45,11 @@ defmodule FluffyTrain.MixProject do
       {:telemetry_metrics, "~> 0.6"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.20"},
-      {:jason, "~> 1.2"},
+      {:jason, "~> 1.4"},
       {:plug_cowboy, "~> 2.5"},
       {:openai_ex, "~> 0.2.3"},
-      {:petal_components, "~> 1.0"}
+      {:petal_components, "~> 1.0"},
+      {:logger_backends, "~> 1.0.0"}
     ]
   end
 

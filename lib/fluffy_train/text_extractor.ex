@@ -7,6 +7,29 @@ defmodule FluffyTrain.TextExtractor do
     }
   end
 
+  def extract_for_fix(text) do
+    %{
+      "#SOURCE" => extract_between_tags(text, "#SOURCE"),
+      "#LINE" => extract_between_tags(text, "#LINE"),
+      "#DESCRIPTION" => extract_between_tags(text, "#DESCRIPTION"),
+      "#TIMESTAMP" => extract_between_tags(text, "#TIMESTAMP")
+    }
+  end
+
+  def extract_solution(text) do
+    %{
+      "#SOLUTION_SUCCESS" => extract_between_tags(text, "#SOLUTION_SUCCESS"),
+      "#WORKING_CODE" => extract_between_tags(text, "#WORKING_CODE"),
+      "#DESCRIPTION" => extract_between_tags(text, "#DESCRIPTION")
+    }
+  end
+
+  def extract_fix(text) do
+    %{
+      "#FIXED_SOURCE_CODE" => extract_between_tags(text, "#FIXED_SOURCE_CODE")
+    }
+  end
+
   defp extract_between_tags(text, tag) do
     if String.contains?(text, tag) do
       parts = String.split(text, tag) |> Enum.reverse()
